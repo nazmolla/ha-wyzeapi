@@ -98,7 +98,9 @@ class WyzeThermostat(ClimateEntity):
 
     @property
     def current_temperature(self) -> float:
-        return self._thermostat.temperature
+        if self._thermostat.temp_unit == TemperatureUnit.FAHRENHEIT:
+            return self._thermostat.temperature
+        return (self._thermostat.temperature - 32 ) * 5/9
 
     @property
     def current_humidity(self) -> Optional[int]:
@@ -127,13 +129,17 @@ class WyzeThermostat(ClimateEntity):
     def hvac_modes(self) -> List[str]:
         return [HVAC_MODE_AUTO, HVAC_MODE_HEAT, HVAC_MODE_COOL, HVAC_MODE_OFF]
 
-    @property
+   @property
     def target_temperature_high(self) -> Optional[float]:
-        return self._thermostat.cool_set_point
+        if self._thermostat.temp_unit == TemperatureUnit.FAHRENHEIT:
+            return self._thermostat.cool_set_point
+        return (self._thermostat.cool_set_point - 32 ) * 5/9
 
     @property
     def target_temperature_low(self) -> Optional[float]:
-        return self._thermostat.heat_set_point
+        if self._thermostat.temp_unit == TemperatureUnit.FAHRENHEIT:
+            return self._thermostat.heat_set_point
+        return (self._thermostat.heat_set_point - 32 ) * 5/9
 
     @property
     def preset_mode(self) -> Optional[str]:
@@ -178,10 +184,14 @@ class WyzeThermostat(ClimateEntity):
         else:
             return CURRENT_HVAC_OFF
 
-    @token_exception_handler
+   @token_exception_handler
     async def async_set_temperature(self, **kwargs) -> None:
         target_temp_low = kwargs['target_temp_low']
         target_temp_high = kwargs['target_temp_high']
+
+        if self._thermostat.temp_unit != TemperatureUnit.FAHRENHEIT:
+            target_temp_low = (target_temp_low * 9/5) + 32
+            target_temp_high = (target_temp_high * 9/5) + 32
 
         if target_temp_low != self._thermostat.heat_set_point:
             await self._thermostat_service.set_heat_point(self._thermostat, int(target_temp_low))
